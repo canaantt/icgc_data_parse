@@ -97,24 +97,34 @@ var clinicalField = {
 
 diseaseFolders.forEach(diseaseFolder => {
     // console.log(diseaseFolder);
-    fs.readdir(diseaseFolder, function(err, files) {
-        if (err) { throw err; }
-        var fileCoreNames = files.map(f => f.split('.')[0]);
-        fileCoreNames.map(fileCoreName => {
-            var data = csv(path.join(diseaseFolder, fileCoreName + '.csv'));
-            console.log(fileCoreName);
-            console.log(data[0]);
-            // switch(fileCoreName) {
-            //     case donor:
-            //     case donor_exposure:
-            //     case donor_family:
-            //     case donor_surgery:
-            //         var data = csv(path.join(diseaseFolder, fileCoreName, '.csv'));
-            //         console.log(Object.keys(data));
-            //     case donor_therapy:
-            // }
-            // fs.writeFileSync(, JSON.stringify(data));
-
+    fs.readFile(diseaseFolder+'/donor.json', 'utf8', function (err,data) {
+        if (err) {
+          return console.log(err);
+        }
+        var result = data.replace(/NA/g, null);
+      
+        fs.writeFile(diseaseFolder+'/donor.json', result, 'utf8', function (err) {
+           if (err) return console.log(err);
+        });
+      });
+    
+    
+    var donor_json = require(diseaseFolder + '/donor.json');
+    donor = JSON.parse(donor_json);
+    var obj = donor.values;
+    
+    var res = [];
+    obj.project_code.forEach(function(v, i){
+        console.log(i);
+        res[i] = [];
+        Object.keys(obj).forEach(function(key){
+            res[i].push(obj[key][i]);
         });
     });
+    donor.values = res;
+    fs.writeFileSync(diseaseFolder + '/donor1.json', JSON.stringify(donor));
 });
+
+
+
+

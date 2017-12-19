@@ -1,16 +1,18 @@
 options(stringsAsFactors=F)
-donor = read.delim('../icgc-dataset-1513210261808/donor.tsv', header=T, na.strings=c("","NA"))
+library(rjson)
+library(jsonlite)
+donor = read.delim('../icgc-dataset-1513210261808/donor.tsv', header=T, na.strings=c("", NULL))
 donorIDs = unique(donor$submitted_donor_id)
 # grep("TCGA-", donorIDs) 10163 patients are in TCGA cohorts
 
-donor_biomarker = read.delim('../icgc-dataset-1513210261808/donor_biomarker.tsv', header=T, na.strings=c("","NA"))
-donor_exposure = read.delim('../icgc-dataset-1513210261808/donor_exposure.tsv', header=T, na.strings=c("","NA"))
-donor_family = read.delim('../icgc-dataset-1513210261808/donor_family.tsv', header=T, na.strings=c("","NA"))
-donor_surgery = read.delim('../icgc-dataset-1513210261808/donor_surgery.tsv', header=T, na.strings=c("","NA"))
-donor_therapy = read.delim('../icgc-dataset-1513210261808/donor_therapy.tsv', header=T, na.strings=c("","NA"))
-sample = read.delim('../icgc-dataset-1513210261808/sample.tsv', header=T, na.strings=c("","NA"))
-specimen = read.delim('../icgc-dataset-1513210261808/specimen.tsv', header=T, na.strings=c("","NA"))
-protein_expression = read.delim('../icgc-dataset-1513210261808/protein_expression.tsv', header=T, na.strings=c("","NA"))
+donor_biomarker = read.delim('../icgc-dataset-1513210261808/donor_biomarker.tsv', header=T, na.strings=c("",NULL))
+donor_exposure = read.delim('../icgc-dataset-1513210261808/donor_exposure.tsv', header=T, na.strings=c("",NULL))
+donor_family = read.delim('../icgc-dataset-1513210261808/donor_family.tsv', header=T, na.strings=c("",NULL))
+donor_surgery = read.delim('../icgc-dataset-1513210261808/donor_surgery.tsv', header=T, na.strings=c("",NULL))
+donor_therapy = read.delim('../icgc-dataset-1513210261808/donor_therapy.tsv', header=T, na.strings=c("",NULL))
+sample = read.delim('../icgc-dataset-1513210261808/sample.tsv', header=T, na.strings=c("",NULL))
+specimen = read.delim('../icgc-dataset-1513210261808/specimen.tsv', header=T, na.strings=c("",NULL))
+protein_expression = read.delim('../icgc-dataset-1513210261808/protein_expression.tsv', header=T, na.strings=c("",NULL))
 
 # Check all the donor-related dataframes' submitted_donor_id overlapping 
 unique(donor_biomarker$submitted_donor_id %in% donor$submitted_donor_id) # TRUE
@@ -41,28 +43,41 @@ for(disease in names(ID_by_disease)){
     write.csv(as.data.frame(donor_family[which(donor_family$submitted_donor_id %in% ID_by_disease[[disease]]),]), file = paste(disease,"/donor_family.csv",sep=""))
     write.csv(as.data.frame(donor_surgery[which(donor_surgery$submitted_donor_id %in% ID_by_disease[[disease]]),]), file = paste(disease,"/donor_surgery.csv",sep=""))
     write.csv(as.data.frame(donor_therapy[which(donor_therapy$submitted_donor_id %in% ID_by_disease[[disease]]),]), file = paste(disease,"/donor_therapy.csv",sep=""))
+}
 
+for(disease in names(ID_by_disease)){  
+    print(disease)
     # parse in each table
     donor_disease = read.csv(file = paste(disease,"/donor.csv",sep=""), header=T)
     ids = donor_disease$icgc_donor_id
+    donor_disease = subset( donor_disease, select = -c(X, icgc_donor_id))
     cols = colnames(donor_disease)
     fields = lapply(cols, function(col){
         if(typeof(unlist(donor_disease[col])) == "integer"){
-            data.frame('min'=min(donor_disease[col]), 'max'=max(donor_disease[col]))
+            data.frame('min'=min(donor_disease[col], na.rm=T), 'max'=max(donor_disease[col], na.rm=T))
         }else{
             unique(donor_disease[col])
         }  
     })
-
+    donor_disease_o = donor_disease
     for (i in 1:length(cols)){ 
-        if(typeof(unlist(donor_disease[col])) == "integer"){
-
-        }else{
-            
+        if(typeof(unlist(donor_disease[cols[i]])) != "integer"){
+            donor_disease[cols[i]][which(is.na(donor_disease[cols[i]])),] <- "HELLO" 
+            donor_disease[cols[i]] = match(unlist(donor_disease[cols[i]]), unlist(fields[[i]]))-1
         }
     }
-    # values =
-    # output =
+    res = {}
+    new_fields = {}
+    for (i in 1:length(fields)){
+        new_fields[cols[i]] = fields[[i]]
+    }
+    res$ids = ids
+    res$fields = new_fields
+    res$values = donor_disease
+    write_json(rjson:::toJSON(res), paste(disease,"/donor.json",sep=""))
+    
+
+    
 }
 
 
